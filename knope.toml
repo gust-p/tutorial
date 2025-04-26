@@ -50,3 +50,7 @@ name = "release"
 
 [[workflows.steps]]
 type = "Release"
+
+[github]
+owner = "gust-p"
+repo = "tutorial"
