@@ -1,0 +1,52 @@
+[packages.A]
+versioned_files = ["A/Cargo.toml", "A/Cargo.lock"]
+changelog = "A/CHANGELOG.md"
+assets = "artifacts/A*"
+
+[packages.B]
+versioned_files = ["B/go.mod"]
+changelog = "B/CHANGELOG.md"
+assets = "artifacts/B-*"
+
+
+# The Version and Changelog variables can only be used with a single [package].
+# So titles will have no information about the version, for that check the Changelog.
+[[workflows]]
+name = "prepare-release"
+
+[[workflows.steps]]
+type = "Command"
+command = "git switch -c release"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+
+[[workflows.steps]]
+type = "Command"
+command = "git commit -m 'chore: prepare release'"
+
+[[workflows.steps]]
+type = "Command"
+command = "git push --force --set-upstream origin release"
+
+[[workflows.steps]]
+type = "CreatePullRequest"
+base = "main"
+
+[workflows.steps.title]
+template = "chore: prepare Okina release"
+
+[workflows.steps.body]
+template = "This PR was created by Knope. Merging it will create a new release"
+
+[[workflows]]
+name = "document-change"
+
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+[[workflows]]
+name = "release"
+
+[[workflows.steps]]
+type = "Release"

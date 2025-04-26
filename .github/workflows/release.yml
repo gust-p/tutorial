@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  build-rust-artifacts:
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - package: A
+            target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.package }}
+
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: Swatinem/rust-cache@v2.7.8
+      - name: Install rust toolchain target
+        run: rustup target add ${{ matrix.target }}
+      - name: Setup golang
+        uses: actions/setup-go@v5
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }} --manifest-path=${{ matrix.package }}/Cargo.toml
+      
+      - name: Set archive name
+        id: archive
+        run: echo "archive_name=${{ matrix.package }}-${{ matrix.target }}" >> $GITHUB_ENV
+
+      - name: Create archive folder
+        run: mkdir -p ${{ env.archive_name }}
+
+      - name: Copy artifact
+        run: cp ${{matrix.package}}/target/${{ matrix.target }}/release/${{ matrix.package }} ${{ env.archive_name }}/
+
+      - name: Create archive
+        run: tar -czf ${{ env.archive_name }}.tgz ${{ env.archive_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ matrix.package }}-${{ matrix.target }}
+          path: ${{ env.archive_name }}.tgz
+          if-no-files-found: error
+
+  build-go-artifacts:
+    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - package: B
+            GOOS: linux
+            GOARCH: amd64
+            os: ubuntu-latest
+            codename: cli
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.package }}
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Setup golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "./${{ matrix.package }}/go.mod"
+
+      - name: Build
+        working-directory: ${{ matrix.package }}
+        run: GOOS=${{ matrix.GOOS }} GOARCH=${{ matrix.GOARCH }} go build -ldflags "-s -w"
+
+      - name: Set archive name
+        id: archive
+        run: echo "archive_name=${{ matrix.codename }}-${{ matrix.GOOS }}-${{ matrix.GOARCH }}" >> $GITHUB_ENV
+
+      - name: Create archive folder
+        run: mkdir -p ${{ env.archive_name }}
+
+      - name: Copy artifact
+        run: cp ${{ matrix.package }}/${{ matrix.codename }} ${{ env.archive_name }}/
+
+      - name: Create archive
+        run: tar -czf ${{ env.archive_name }}.tgz ${{ env.archive_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: ${{ matrix.codename }}-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
+          path: ${{ env.archive_name }}.tgz
+          if-no-files-found: error
+
+  knope-release:
+    needs: [build-rust-artifacts, build-go-artifacts]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/download-artifact@v4.2.1
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: knope-dev/action@v2.1.0
+        with:
+          version: 0.19.2
+      - run: knope release --verbose
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+
