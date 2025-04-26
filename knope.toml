@@ -34,7 +34,7 @@ type = "CreatePullRequest"
 base = "main"
 
 [workflows.steps.title]
-template = "chore: prepare Okina release"
+template = "chore: prepare release"
 
 [workflows.steps.body]
 template = "This PR was created by Knope. Merging it will create a new release"
