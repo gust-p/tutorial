@@ -1,5 +1,5 @@
 [packages.A]
-versioned_files = ["A/Cargo.toml", "A/Cargo.lock"]
+versioned_files = ["A/Cargo.toml"]
 changelog = "A/CHANGELOG.md"
 assets = "artifacts/A*"
 
